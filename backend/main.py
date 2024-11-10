@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, Session
 from passlib.context import CryptContext
@@ -16,7 +16,6 @@ app = FastAPI()
 DATABASE_URL = "sqlite:///./test.db"
 Base = declarative_base()
 engine = create_engine(DATABASE_URL)
-Base.metadata.create_all(bind=engine)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 SECRET_KEY = "your_secret_key"
@@ -40,6 +39,7 @@ class Task(Base):
     finish_time = Column(String)
     finish_criteria = Column(String)
     resources = Column(String)
+    start_date = Column(DateTime, default=datetime.utcnow)
     user_id = Column(Integer, ForeignKey("users.id"))
 
     user = relationship("User")
@@ -62,6 +62,7 @@ class TaskCreate(BaseModel):
     finish_time: str
     finish_criteria: str
     resources: str
+    start_date: Optional[datetime] = None
 
 class TaskUpdate(BaseModel):
     name: Optional[str] = None
@@ -70,6 +71,7 @@ class TaskUpdate(BaseModel):
     finish_time: Optional[str] = None
     finish_criteria: Optional[str] = None
     resources: Optional[str] = None
+    start_date: Optional[datetime] = None
 
 class TaskResponse(BaseModel):
     id: int
@@ -79,6 +81,7 @@ class TaskResponse(BaseModel):
     finish_time: str
     finish_criteria: str
     resources: str
+    start_date: datetime
 
     class Config:
         orm_mode = True
@@ -138,7 +141,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 # Enable CORS
 origins = [
     "http://localhost:3000",
-    "http://localhost:3001",
+    "http://127.0.0.1:3000",
 ]
 
 app.add_middleware(
@@ -148,6 +151,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Create the database tables
+Base.metadata.create_all(bind=engine)
 
 @app.post("/users/", response_model=UserResponse)
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
