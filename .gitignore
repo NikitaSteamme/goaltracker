@@ -1,0 +1,55 @@
+# Ignore Node.js dependencies
+node_modules/
+
+# Ignore Python virtual environment
+venv/
+
+# Ignore environment variables (sensitive data)
+.env
+
+# Ignore Python compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore SQLite databases
+*.db
+*.sqlite3
+
+# Ignore build and distribution folders
+build/
+dist/
+
+# Ignore system-specific files (e.g., macOS)
+.DS_Store
+
+# Ignore IDE-specific files (e.g., VSCode, PyCharm)
+.vscode/
+.idea/
+
+# Ignore npm debug logs
+npm-debug.log*
+
+# Ignore yarn files
+yarn-error.log
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# Ignore local development files
+*.local
+
+# Ignore logs
+*.log
+logs/
+
+# Ignore coverage reports
+coverage/
+.nyc_output/
+
+# Ignore temporary files
+*.tmp
+*.temp
