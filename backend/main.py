@@ -35,14 +35,24 @@ class Task(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     result = Column(String)
-    duration = Column(Integer)
-    finish_time = Column(String)
+    finish_time = Column(DateTime)
     finish_criteria = Column(String)
     resources = Column(String)
     start_date = Column(DateTime, default=datetime.utcnow)
     user_id = Column(Integer, ForeignKey("users.id"))
 
     user = relationship("User")
+    subtasks = relationship("Subtask", back_populates="task")
+
+class Subtask(Base):
+    __tablename__ = "subtasks"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    is_completed = Column(Integer, default=0)
+    due_date = Column(DateTime)
+    task_id = Column(Integer, ForeignKey("tasks.id"))
+
+    task = relationship("Task", back_populates="subtasks")
 
 class UserCreate(BaseModel):
     email: str
@@ -58,8 +68,7 @@ class UserResponse(BaseModel):
 class TaskCreate(BaseModel):
     name: str
     result: str
-    duration: int
-    finish_time: str
+    finish_time: datetime
     finish_criteria: str
     resources: str
     start_date: Optional[datetime] = None
@@ -67,8 +76,7 @@ class TaskCreate(BaseModel):
 class TaskUpdate(BaseModel):
     name: Optional[str] = None
     result: Optional[str] = None
-    duration: Optional[int] = None
-    finish_time: Optional[str] = None
+    finish_time: Optional[datetime] = None
     finish_criteria: Optional[str] = None
     resources: Optional[str] = None
     start_date: Optional[datetime] = None
@@ -77,11 +85,31 @@ class TaskResponse(BaseModel):
     id: int
     name: str
     result: str
-    duration: int
-    finish_time: str
+    finish_time: datetime
     finish_criteria: str
     resources: str
     start_date: datetime
+    subtasks: List["SubtaskResponse"] = []
+
+    class Config:
+        orm_mode = True
+
+class SubtaskCreate(BaseModel):
+    name: str
+    is_completed: Optional[int] = 0
+    due_date: Optional[datetime] = None
+
+class SubtaskUpdate(BaseModel):
+    name: Optional[str] = None
+    is_completed: Optional[int] = None
+    due_date: Optional[datetime] = None
+
+class SubtaskResponse(BaseModel):
+    id: int
+    name: str
+    is_completed: int
+    due_date: Optional[datetime] = None
+    task_id: int
 
     class Config:
         orm_mode = True
@@ -187,6 +215,13 @@ def list_tasks(db: Session = Depends(get_db), current_user: User = Depends(get_c
     tasks = db.query(Task).filter(Task.user_id == current_user.id).all()
     return tasks
 
+@app.get("/tasks/{task_id}", response_model=TaskResponse)
+def get_task(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    task = db.query(Task).filter(Task.id == task_id, Task.user_id == current_user.id).first()
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task
+
 @app.post("/tasks/", response_model=TaskResponse)
 def create_task(task: TaskCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     db_task = Task(**task.dict(), user_id=current_user.id)
@@ -232,5 +267,50 @@ def delete_user(user_id: int, db: Session = Depends(get_db)):
 @app.get("/me", response_model=UserResponse)
 def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+@app.post("/tasks/{task_id}/subtasks/", response_model=SubtaskResponse)
+def create_subtask(task_id: int, subtask: SubtaskCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    task = db.query(Task).filter(Task.id == task_id, Task.user_id == current_user.id).first()
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    db_subtask = Subtask(**subtask.dict(), task_id=task_id)
+    db.add(db_subtask)
+    db.commit()
+    db.refresh(db_subtask)
+    return db_subtask
+
+@app.get("/tasks/{task_id}/subtasks/", response_model=List[SubtaskResponse])
+def list_subtasks(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    task = db.query(Task).filter(Task.id == task_id, Task.user_id == current_user.id).first()
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    subtasks = db.query(Subtask).filter(Subtask.task_id == task_id).all()
+    return subtasks
+
+@app.put("/tasks/{task_id}/subtasks/{subtask_id}", response_model=SubtaskResponse)
+def update_subtask(task_id: int, subtask_id: int, subtask: SubtaskUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    task = db.query(Task).filter(Task.id == task_id, Task.user_id == current_user.id).first()
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    db_subtask = db.query(Subtask).filter(Subtask.id == subtask_id, Subtask.task_id == task_id).first()
+    if db_subtask is None:
+        raise HTTPException(status_code=404, detail="Subtask not found")
+    for key, value in subtask.dict(exclude_unset=True).items():
+        setattr(db_subtask, key, value)
+    db.commit()
+    db.refresh(db_subtask)
+    return db_subtask
+
+@app.delete("/tasks/{task_id}/subtasks/{subtask_id}", response_model=SubtaskResponse)
+def delete_subtask(task_id: int, subtask_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    task = db.query(Task).filter(Task.id == task_id, Task.user_id == current_user.id).first()
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    db_subtask = db.query(Subtask).filter(Subtask.id == subtask_id, Subtask.task_id == task_id).first()
+    if db_subtask is None:
+        raise HTTPException(status_code=404, detail="Subtask not found")
+    db.delete(db_subtask)
+    db.commit()
+    return db_subtask
 
 # Add more endpoints for login, logout, password recovery, and CRUD operations for tasks
