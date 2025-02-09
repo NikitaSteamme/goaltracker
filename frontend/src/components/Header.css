@@ -1,0 +1,44 @@
+.header {
+    background-color: #007bff;
+    color: white;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+  }
+  
+  .header-title {
+    font-size: 1.5rem;
+    margin: 0;
+  }
+  
+  .header-links {
+    display: flex;
+    align-items: center;
+  }
+  
+  .header-link {
+    color: white;
+    text-decoration: none;
+    margin-left: 1rem;
+    padding: 0.5rem 1rem;
+    background-color: #0056b3;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+  }
+  
+  .header-link:hover {
+    background-color: #003f7f;
+  }
+  
+  .user-email {
+    margin-left: 1rem;
+    font-size: 1rem;
+  }
