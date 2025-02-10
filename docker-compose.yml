@@ -1,0 +1,13 @@
+version: '3'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"    # For backend
+      - "3000:3000"    # For frontend
+    volumes:
+      - ./backend:/app/backend
+      - ./frontend:/app/frontend
+    environment:
+      - BACKEND_URL=http://localhost:8000
